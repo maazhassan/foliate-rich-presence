@@ -30,7 +30,7 @@ from pathlib import Path
 import gi
 
 gi.require_version("Atspi", "2.0")
-from gi.repository import Atspi
+from gi.repository import Atspi  # pyright: ignore[reportAttributeAccessIssue]
 
 DATA = Path.home() / ".local/share/com.github.johnfactotum.Foliate"
 CACHE = Path.home() / ".cache/com.github.johnfactotum.Foliate"
@@ -55,6 +55,8 @@ class Discord:
         self.sock = None
 
     def _send(self, op, payload):
+        if not self.sock:
+            raise ConnectionError("not connected to Discord")
         data = json.dumps(payload).encode()
         self.sock.sendall(struct.pack("<II", op, len(data)) + data)
 
@@ -63,6 +65,8 @@ class Discord:
         return op, json.loads(self._read(n))
 
     def _read(self, n):
+        if not self.sock:
+            raise ConnectionError("not connected to Discord")
         buf = b""
         while len(buf) < n:
             chunk = self.sock.recv(n - len(buf))
@@ -207,12 +211,15 @@ def _resolve(base_dir, href):
 
 
 def parse_epub_toc(path):
-    """Return (spine_hrefs, [(title, spine_index)]) in TOC order, or None."""
+    """Return [(title, spine_index)] in TOC order, or None."""
     try:
         with zipfile.ZipFile(path) as z:
-            opf_path = re.search(
+            container = re.search(
                 r'full-path="([^"]+)"', z.read("META-INF/container.xml").decode()
-            ).group(1)
+            )
+            if not container:
+                return None
+            opf_path = container.group(1)
             opf_dir = posixpath.dirname(opf_path)
             opf = ET.fromstring(z.read(opf_path))
             manifest = {}
@@ -343,7 +350,7 @@ def upload_cover(identifier):
 # -------------------------------------------------------------------- main
 
 
-def build_activity(data, path, started, covers):
+def build_activity(data, started, covers):
     meta = data["metadata"]
     title, author = lang_str(meta.get("title")), lang_str(meta.get("author"))
     chapter = chapter_for(book_path(meta.get("identifier")), data.get("lastLocation"))
@@ -367,7 +374,7 @@ def build_activity(data, path, started, covers):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument(
         "--client-id",
         default=os.environ.get("FOLIATE_RPC_CLIENT_ID", DEFAULT_CLIENT_ID),
@@ -394,7 +401,7 @@ def main():
                 path, data = found
                 if path != current:
                     current, started = path, int(time.time())
-                activity = build_activity(data, path, started, args.covers)
+                activity = build_activity(data, started, args.covers)
             else:
                 current = None
 
