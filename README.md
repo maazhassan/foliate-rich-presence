@@ -2,6 +2,8 @@
 
 Shows the book you're reading in [Foliate](https://github.com/johnfactotum/foliate) as a Discord Rich Presence (title, chapter, progress). Runs locally over Discord's IPC socket; no bot or server.
 
+<img width="262" height="106" alt="Screenshot_20261006_010950" src="https://github.com/user-attachments/assets/94ab32bd-bdb7-4843-b2c4-d1211e2eebc9" />
+
 Requires Python 3 with PyGObject and the AT-SPI typelib.
 
 ```
